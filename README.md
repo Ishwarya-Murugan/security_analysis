@@ -5,11 +5,11 @@ The repository has the code and design to store the security information for Sto
 
 ## Data Model Design Overview
 
+![image](https://user-images.githubusercontent.com/36078795/138581501-3b65cbbe-de65-44c8-86dd-2cb0ee876787.png)
+
+
 ### Business Process
 Create a data model to store the information on Securities traded in US stock market for analysis. The securities could be of different type like Stocks, ETFs or Mutual Funds etc.
-
-### Grain
-The dimensional and fact tables will have grain of one record for each security.
 
 ### Dimensional Tables
 The below will be the conforming dimensions which would be used to drill-down and roll-up the details on all the fact tables in the Security Analysis project.
@@ -21,7 +21,8 @@ The below will be the conforming dimensions which would be used to drill-down an
 The below fact tables will get loaded at 05:00 PM EST of the last day of the month irrespective of the holiday or weekend.
   - security_fct (periodic snapshot)
   - account_trade_fct (periodic snapshot)
-  - account_cost_basis (accumulating snapshot)
+  - account_cost_basis_fct (accumulating snapshot)
+  - security_portfolio_fct (periodic_snapshot)
   
 The below is the transactional fact table which will get a record loaded whenever the trade is made
   - account_trade_fct (transactional)
@@ -179,11 +180,26 @@ current_quantity        DECIMAL(5,2)
 total_market_value      DECIMAL(9,2)
 avg_purchase_price      DECIMAL(7,2)
 avg_selling_price       DECIMAL(7,2)
-realized_gain           DECIMAL(7,2)
-realized_loss           DECIMAL(7,2)
-unrealized_gain         DECIMAL(7,2)
-unrealized_loss         DECIMAL(7,2)
+realized_gain_loss      DECIMAL(7,2)
+unrealized_gain_loss    DECIMAL(7,2)
 dividend_earned         DECIMAL(7,2)
 </pre>
 
 **Table Usage:** The table will store cost_basis for buy and sell transaction made on all the accounts. The grain is at the symbol inside each account level. It is a monthly snapshot fact table.
+
+### Security Portfolio Fact
+**Database name:** `security_analysis`  
+
+**Table Name:** `portfolio_security_fct`      
+
+<b>Columns:</b>
+<pre>
+symbol                  VARCAHR(8)  references security_dim(symbol) primary key
+record_date             INT  references date_dim(date_key) primary key
+current_quantity        DECIMAL(5,2)
+total_market_value      DECIMAL(9,2)
+avg_purchase_price      DECIMAL(7,2)
+unrealized_gain_loss    DECIMAL(7,2)
+</pre>
+
+**Table Usage:** The table will store current security count and market_value in the portfolio at the end of every month. The grain is at the security level. It is a monthly snapshot fact table.
