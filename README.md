@@ -1,4 +1,4 @@
-# <center> Dimensional Model for Securities </center> 
+# <center> Dimensional Model for Security Analysis </center> 
 The repository is part of the Security Analysis project.
 
 The repository has the code and design to store the security information for Stocks, ETFs and Mutual Funds, I'm currently tracking manually for security analysis.
@@ -13,14 +13,19 @@ The dimensional and fact tables will have grain of one record for each security.
 
 ### Dimensional Tables
 The below will be the conforming dimensions which would be used to drill-down and roll-up the details on all the fact tables in the Security Analysis project.
-
-Security_dim would be a slowly-changing dimension table with type- 1 update.
   - date_dim 
   - security_dim
+  - account_dim
   
 ### Fact Tables
-The fact table will get loaded at 05:00 PM EST of the last day of the month irrespective of the holiday or weekend.
-  - security_fact
+The below fact tables will get loaded at 05:00 PM EST of the last day of the month irrespective of the holiday or weekend.
+  - security_fct (periodic snapshot)
+  - account_trade_fct (periodic snapshot)
+  - account_balance_fct (periodic snapshot)
+  - account_cost_basis (accumulating snapshot)
+  
+The below is the transactional fact table which will get a record loaded whenever the trade is made
+  - account_trade_fct (transactional)
 
 ## Dimensional Table Design
 ### Date Dimension
@@ -50,7 +55,7 @@ mmyyyy           CHAR(6)
 
 **Table Usage:** The table will act as a role playing dimensions in the below fields.
 1) `ipo_date` and `inception_date` in `security_dim` table
-2) `record_date` in the `security_fact` table
+2) `record_date` in the `security_fct` table
 
 ### Security Dimension
 **Database name:** `security_analysis`  
@@ -78,16 +83,43 @@ The below attribure could change over time. The table will follow 'Type-1' updat
 1) `industry` - could be updated due to merger
 2) `trading_flag` - could change if the company become private or merged
 
+### Account Dimension
+**Database name:** `security_analysis`  
+
+**Table Name:** `account_dim`      
+
+<b>Columns:</b>
+<pre>
+account_id          VARCHAR(10)   primary key
+firm_name           VARCAHR(30)     
+account_type        VARCAHR(20)  
+account_open_date   INT  references date_dim(date_key) 
+account_close_date  INT  references date_dim(date_key) 
+account_status      VARCHAR(10)
+retirement_flag     VARCHAR(20)
+roth_flag           CHAR(1)
+tax_deferred        CHAR(1)
+hsa_flag            CHAR(1)
+401k_flag           CHAR(1)
+</pre>
+
+**Table Usage:** The table will store the attributes for the different accounts (retirement, individual, hsa etc).
+
+**Slowly Changing Dimension**
+The below attribure could change over time. The table will follow 'Type-1' update for the updated records and overwite the old with new record. 
+1) `account_close_date` and `account_status`- will be update when the account is closed
+
 ## Fact Table Design
 ### Security Fact
 **Database name:** `security_analysis`  
 
-**Table Name:** `security_fact`      
+**Table Name:** `security_fct`      
 
 <b>Columns:</b>
 <pre>
 symbol                  VARCAHR(8)  references security_dim(symbol)    
 record_date             INT  references date_dim(date_key)  
+market_value            DECIMAL(7,2)
 expense_ratio           DECIMAL(5,2)
 dividend_yield_pct      DECIMAL(5,2)
 forward_dividend        DECIMAL(5,2)
@@ -115,3 +147,58 @@ sustainability_rating   CHAR(1)
 </pre>
 
 **Table Usage:** The table will store the security fact detail values at end of every month. It is a monthly snapshot fact table.
+
+### Account Trade Fact
+**Database name:** `security_analysis`  
+
+**Table Name:** `account_trade_fct`      
+
+<b>Columns:</b>
+<pre>
+account_id              VARCHAR(10) references account_dim(account_id) primary key
+symbol                  VARCAHR(8)  references security_dim(symbol) primary key
+trade_date              INT  references date_dim(date_key) primary key
+unit_cost               DECIMAL(7,2) primary key
+trade_quantity          DECIMAL(5,2)
+trade_type              VARCHAR(5)
+total_cost              DECIMAL(7,2)
+</pre>
+
+**Table Usage:** The table will store buy and sell transaction made on all the accounts. It is a transactional fact table with grain at trade level.
+
+### Account Balance Fact
+**Database name:** `security_analysis`  
+
+**Table Name:** `account_balance_fct`      
+
+<b>Columns:</b>
+<pre>
+account_id              VARCHAR(10) references account_dim(account_id) primary key
+symbol                  VARCAHR(8)  references security_dim(symbol) primary key
+total_quantity          DECIMAL(5,2)
+total_market_value      DECIMAL(11,2)
+</pre>
+
+**Table Usage:** The table will store balance of the all the securities in each account at month end. It is a monthly snapshot fact table.
+
+### Account Cost Basis Fact
+**Database name:** `security_analysis`  
+
+**Table Name:** `account_cost_basis_fct`      
+
+<b>Columns:</b>
+<pre>
+account_id              VARCHAR(10) references account_dim(account_id) primary key
+symbol                  VARCAHR(8)  references security_dim(symbol) primary key
+record_date             INT  references date_dim(date_key) primary key
+current_quantity        DECIMAL(5,2)
+current_market_value    DECIMAL(9,2)
+avg_purchase_price      DECIMAL(7,2)
+avg_selling_price       DECIMAL(7,2)
+realized_gain           DECIMAL(7,2)
+realized_loss           DECIMAL(7,2)
+unrealized_gain         DECIMAL(7,2)
+unrealized_loss         DECIMAL(7,2)
+</pre>
+
+**Table Usage:** The table will store cost_basis for buy and sell transaction made on all the accounts. The grain is at the symbol inside each account level. It is a monthly snapshot fact table.
