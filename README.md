@@ -21,7 +21,6 @@ The below will be the conforming dimensions which would be used to drill-down an
 The below fact tables will get loaded at 05:00 PM EST of the last day of the month irrespective of the holiday or weekend.
   - security_fct (periodic snapshot)
   - account_trade_fct (periodic snapshot)
-  - account_balance_fct (periodic snapshot)
   - account_cost_basis (accumulating snapshot)
   
 The below is the transactional fact table which will get a record loaded whenever the trade is made
@@ -127,7 +126,7 @@ pe_ratio                DECIMAL(5,2)
 peg_ratio               DECIMAL(5,2)
 52_week_low             DECIMAL(9,2)
 52_week_high            DECIMAL (9,2)
-beta                    DECIMAL (3,2)
+beta_value              DECIMAL (3,2)
 holding_turnover        DECIMAL(11,2)
 in_nasdaq100            CHAR(1)
 in_sp500                CHAR(1)
@@ -135,7 +134,7 @@ in_dow30                CHAR(1)
 held_by_etf             CHAR(1)
 top_etf_by_exposure     VARCHAR(8)
 top_etf_name            VARCHAR(30)
-top_etf_expossure_pct   DECIMAL(5,2)
+top_etf_exposure_pct   DECIMAL(5,2)
 earning_per_share       DECIMAL(5,2)
 market_cap              DECIMAL(11,2)
 net_assets              DECIMAL(15,2)
@@ -161,25 +160,10 @@ trade_date              INT  references date_dim(date_key) primary key
 unit_cost               DECIMAL(7,2) primary key
 trade_quantity          DECIMAL(5,2)
 trade_type              VARCHAR(5)
-total_cost              DECIMAL(7,2)
+total_trade_cost        DECIMAL(7,2)
 </pre>
 
 **Table Usage:** The table will store buy and sell transaction made on all the accounts. It is a transactional fact table with grain at trade level.
-
-### Account Balance Fact
-**Database name:** `security_analysis`  
-
-**Table Name:** `account_balance_fct`      
-
-<b>Columns:</b>
-<pre>
-account_id              VARCHAR(10) references account_dim(account_id) primary key
-symbol                  VARCAHR(8)  references security_dim(symbol) primary key
-total_quantity          DECIMAL(5,2)
-total_market_value      DECIMAL(11,2)
-</pre>
-
-**Table Usage:** The table will store balance of the all the securities in each account at month end. It is a monthly snapshot fact table.
 
 ### Account Cost Basis Fact
 **Database name:** `security_analysis`  
@@ -192,13 +176,14 @@ account_id              VARCHAR(10) references account_dim(account_id) primary k
 symbol                  VARCAHR(8)  references security_dim(symbol) primary key
 record_date             INT  references date_dim(date_key) primary key
 current_quantity        DECIMAL(5,2)
-current_market_value    DECIMAL(9,2)
+total_market_value      DECIMAL(9,2)
 avg_purchase_price      DECIMAL(7,2)
 avg_selling_price       DECIMAL(7,2)
 realized_gain           DECIMAL(7,2)
 realized_loss           DECIMAL(7,2)
 unrealized_gain         DECIMAL(7,2)
 unrealized_loss         DECIMAL(7,2)
+dividend_earned         DECIMAL(7,2)
 </pre>
 
 **Table Usage:** The table will store cost_basis for buy and sell transaction made on all the accounts. The grain is at the symbol inside each account level. It is a monthly snapshot fact table.
